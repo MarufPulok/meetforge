@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     const prompt = buildPrompt(goal, tone, keyPoints, offerConfig);
     
     // Call Gemini AI - using Gemini 2.0 Flash (supported by SDK 0.24.1)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
     
     const result = await model.generateContent(prompt);
     const response = result.response;
