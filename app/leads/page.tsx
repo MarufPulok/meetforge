@@ -137,6 +137,32 @@ export default function LeadsPage() {
     },
   });
 
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ leadId, status }: { leadId: string; status: string }) => {
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to update status');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast.success('Status Updated', {
+        description: 'Lead status has been updated successfully.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+    onError: (error: Error) => {
+      toast.error('Update Failed', {
+        description: error.message || 'Failed to update status. Please try again.',
+      });
+    },
+  });
+
   const {
     register,
     handleSubmit,
@@ -305,9 +331,31 @@ export default function LeadsPage() {
                     <TableCell>{lead.companyName || '-'}</TableCell>
                     <TableCell>{lead.email}</TableCell>
                     <TableCell>
-                      <Badge className={statusColors[lead.status]}>
-                        {lead.status}
-                      </Badge>
+                      <Select
+                        value={lead.status}
+                        onValueChange={(value) => {
+                          updateStatusMutation.mutate({ leadId: lead._id, status: value });
+                        }}
+                      >
+                        <SelectTrigger className="w-[140px]">
+                          <SelectValue>
+                            <Badge className={statusColors[lead.status]}>
+                              {lead.status === 'NEW' && 'New'}
+                              {lead.status === 'CONTACTED' && 'Contacted'}
+                              {lead.status === 'REPLIED' && 'Replied'}
+                              {lead.status === 'MEETING_BOOKED' && 'Meeting Booked'}
+                              {lead.status === 'LOST' && 'Lost'}
+                            </Badge>
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="NEW">New</SelectItem>
+                          <SelectItem value="CONTACTED">Contacted</SelectItem>
+                          <SelectItem value="REPLIED">Replied</SelectItem>
+                          <SelectItem value="MEETING_BOOKED">Meeting Booked</SelectItem>
+                          <SelectItem value="LOST">Lost</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>
                       {lead.lastContactedAt

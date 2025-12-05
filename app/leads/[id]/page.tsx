@@ -78,6 +78,22 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     },
   });
 
+  const updateStatusMutation = useMutation({
+    mutationFn: async (status: string) => {
+      const res = await fetch(`/api/leads/${resolvedParams.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error('Failed to update status');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead', resolvedParams.id] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+  });
+
   const {
     register,
     handleSubmit,
@@ -228,28 +244,60 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             </CardContent>
           </Card>
 
-          {data?.lead?.status !== 'MEETING_BOOKED' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600 mb-3">
-                  Schedule a meeting with this lead
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-sm text-gray-600 mb-3">
+                Quickly update lead status
+              </p>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  updateStatusMutation.mutate('REPLIED');
+                }}
+                disabled={updateStatusMutation.isPending || data?.lead?.status === 'REPLIED'}
+              >
+                ✉️ Mark as Replied
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  updateStatusMutation.mutate('MEETING_BOOKED');
+                }}
+                disabled={updateStatusMutation.isPending || data?.lead?.status === 'MEETING_BOOKED'}
+              >
+                📅 Mark as Meeting Booked
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  updateStatusMutation.mutate('LOST');
+                }}
+                disabled={updateStatusMutation.isPending || data?.lead?.status === 'LOST'}
+              >
+                ❌ Mark as Lost
+              </Button>
+              <div className="pt-3 border-t mt-3">
+                <p className="text-sm text-gray-600 mb-2">
+                  Schedule a meeting
                 </p>
                 <Button
-                  variant="outline"
+                  variant="default"
                   className="w-full"
                   onClick={() => {
-                    // In a real scenario, you might want to fetch the Calendly URL from settings
                     window.open('https://calendly.com', '_blank');
                   }}
                 >
-                  Open Calendly Booking
+                  🔗 Open Calendly Booking
                 </Button>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
