@@ -1,5 +1,6 @@
 'use client';
 
+import { GenerateTemplateModal } from '@/components/GenerateTemplateModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import * as z from 'zod';
@@ -56,10 +58,18 @@ export default function NewTemplatePage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<TemplateFormData>({
     resolver: zodResolver(templateSchema),
   });
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleTemplateGenerated = (subject: string, body: string) => {
+    setValue('subject', subject);
+    setValue('body', body);
+  };
 
   const onSubmit = (data: TemplateFormData) => {
     createMutation.mutate(data);
@@ -78,6 +88,40 @@ export default function NewTemplatePage() {
           Design a new email template for your outreach campaigns
         </p>
       </div>
+
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setIsModalOpen(true)}
+          className="gap-2"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M12 3v6l4-4-4-4" />
+            <path d="M12 3v6l-4-4 4-4" />
+            <path d="M12 21v-6l4 4-4 4" />
+            <path d="M12 21v-6l-4 4 4 4" />
+            <circle cx="12" cy="12" r="1" />
+          </svg>
+          Generate with AI
+        </Button>
+      </div>
+
+      <GenerateTemplateModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        onTemplateGenerated={handleTemplateGenerated}
+      />
 
       <Card>
         <CardHeader>
