@@ -12,18 +12,30 @@ interface EmailResult {
 }
 
 /**
- * Replace template variables with lead data
+ * Replace template variables with lead and offer config data
  */
 function replaceVariables(
   text: string,
-  lead: Partial<ILead>
+  lead: Partial<ILead>,
+  offerConfig: IOfferConfig
 ): string {
-  return text
+  // Replace lead variables
+  let result = text
     .replace(/\{\{firstName\}\}/g, lead.firstName || '')
     .replace(/\{\{lastName\}\}/g, lead.lastName || '')
     .replace(/\{\{companyName\}\}/g, lead.companyName || '')
     .replace(/\{\{location\}\}/g, lead.location || '')
     .replace(/\{\{email\}\}/g, lead.email || '');
+  
+  // Replace offer config variables
+  result = result
+    .replace(/\{\{calendlyUrl\}\}/g, offerConfig.calendlyUrl || '')
+    .replace(/\{\{fromName\}\}/g, offerConfig.fromName || '')
+    .replace(/\{\{nicheName\}\}/g, offerConfig.nicheName || '')
+    .replace(/\{\{icpDescription\}\}/g, offerConfig.icpDescription || '')
+    .replace(/\{\{offerDescription\}\}/g, offerConfig.offerDescription || '');
+  
+  return result;
 }
 
 /**
@@ -41,8 +53,8 @@ export async function sendOutreachEmail(
     }
 
     // Replace variables in subject and body
-    const subject = replaceVariables(template.subject, lead);
-    const body = replaceVariables(template.body, lead);
+    const subject = replaceVariables(template.subject, lead, offerConfig);
+    const body = replaceVariables(template.body, lead, offerConfig);
 
     // Send email via Resend
     const { data, error } = await resend.emails.send({

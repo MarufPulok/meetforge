@@ -105,6 +105,30 @@ export default function EditTemplatePage({ params }: { params: Promise<{ id: str
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+              <h4 className="font-medium text-sm text-gray-900 mb-2">Available Variables:</h4>
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <strong className="text-gray-700">Lead Info:</strong>
+                  <ul className="ml-4 mt-1 space-y-0.5 text-gray-600">
+                    <li>• {'{firstName}'} - Lead's first name</li>
+                    <li>• {'{lastName}'} - Lead's last name</li>
+                    <li>• {'{companyName}'} - Company name</li>
+                    <li>• {'{location}'} - Location</li>
+                  </ul>
+                </div>
+                <div>
+                  <strong className="text-gray-700">Your Offer:</strong>
+                  <ul className="ml-4 mt-1 space-y-0.5 text-gray-600">
+                    <li>• {'{calendlyUrl}'} - Your booking link</li>
+                    <li>• {'{fromName}'} - Your name</li>
+                    <li>• {'{nicheName}'} - Target niche</li>
+                    <li>• {'{offerDescription}'} - Your offer</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="name">Template Name</Label>
               <Input id="name" {...register('name')} />
