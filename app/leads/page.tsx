@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/table';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Filter, Plus, Upload } from 'lucide-react';
+import { Filter, Plus, Sparkles, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -194,6 +194,12 @@ export default function LeadsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Link href="/leads/scrape">
+            <Button variant="outline" className="bg-purple-50 border-purple-200 hover:bg-purple-100">
+              <Sparkles className="mr-2 h-4 w-4 text-purple-500" />
+              Scrape Leads
+            </Button>
+          </Link>
           <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
