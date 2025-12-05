@@ -22,6 +22,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Send } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 export default function OutreachPage() {
   const queryClient = useQueryClient();
@@ -33,7 +34,10 @@ export default function OutreachPage() {
     queryKey: ['templates'],
     queryFn: async () => {
       const res = await fetch('/api/templates');
-      if (!res.ok) throw new Error('Failed to fetch templates');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to fetch templates');
+      }
       return res.json();
     },
   });
@@ -43,7 +47,10 @@ export default function OutreachPage() {
     queryFn: async () => {
       const url = `/api/leads?status=${statusFilter}`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error('Failed to fetch leads');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to fetch leads');
+      }
       return res.json();
     },
   });
@@ -55,13 +62,30 @@ export default function OutreachPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error('Failed to send outreach');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to send outreach');
+      }
       return res.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       setSelectedLeads(new Set());
-      alert(`✅ Successfully sent ${data.sent} emails. ${data.failed} failed.`);
+      
+      if (data.failed > 0) {
+        toast.warning('Emails Partially Sent', {
+          description: `Successfully sent ${data.sent} email(s). ${data.failed} failed to send.`,
+        });
+      } else {
+        toast.success('Emails Sent Successfully', {
+          description: `Successfully sent ${data.sent} email(s) to your leads.`,
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast.error('Send Failed', {
+        description: error.message || 'Failed to send outreach emails. Please try again.',
+      });
     },
   });
 
@@ -88,19 +112,27 @@ export default function OutreachPage() {
 
   const handleSend = () => {
     if (!selectedTemplate) {
-      alert('Please select a template');
+      toast.error('Template Required', {
+        description: 'Please select an email template before sending.',
+      });
       return;
     }
     if (selectedLeads.size === 0) {
-      alert('Please select at least one lead');
+      toast.error('No Leads Selected', {
+        description: 'Please select at least one lead to send emails to.',
+      });
       return;
     }
-    if (confirm(`Are you sure you want to send emails to ${selectedLeads.size} lead(s)?`)) {
-      sendMutation.mutate({
+    
+    toast.promise(
+      sendMutation.mutateAsync({
         leadIds: Array.from(selectedLeads),
         templateId: selectedTemplate,
-      });
-    }
+      }),
+      {
+        loading: `Sending emails to ${selectedLeads.size} lead(s)...`,
+      }
+    );
   };
 
   return (

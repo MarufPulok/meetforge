@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 import * as z from 'zod';
 
 const loginSchema = z.object({
@@ -43,16 +44,28 @@ function LoginForm() {
       });
 
       if (result.error) {
-        setError(result.error.message || 'Invalid email or password');
+        const errorMessage = result.error.message || 'Invalid email or password';
+        setError(errorMessage);
+        toast.error('Login Failed', {
+          description: errorMessage,
+        });
         setIsLoading(false);
         return;
       }
+
+      toast.success('Login Successful', {
+        description: 'Welcome back! Redirecting to dashboard...',
+      });
 
       // Redirect to original destination or dashboard
       const from = searchParams.get('from') || '/dashboard';
       router.push(from);
     } catch (err) {
-      setError('An unexpected error occurred');
+      const errorMessage = 'An unexpected error occurred';
+      setError(errorMessage);
+      toast.error('Login Error', {
+        description: errorMessage,
+      });
       setIsLoading(false);
     }
   };

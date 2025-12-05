@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { use } from 'react';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 import * as z from 'zod';
 
 const templateSchema = z.object({
@@ -27,11 +28,14 @@ export default function EditTemplatePage({ params }: { params: Promise<{ id: str
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['template', resolvedParams.id],
     queryFn: async () => {
       const res = await fetch(`/api/templates/${resolvedParams.id}`);
-      if (!res.ok) throw new Error('Failed to fetch template');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to fetch template');
+      }
       return res.json();
     },
   });
@@ -43,13 +47,24 @@ export default function EditTemplatePage({ params }: { params: Promise<{ id: str
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       });
-      if (!res.ok) throw new Error('Failed to update template');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to update template');
+      }
       return res.json();
     },
     onSuccess: () => {
+      toast.success('Template Updated', {
+        description: 'Your changes have been saved successfully.',
+      });
       queryClient.invalidateQueries({ queryKey: ['template', resolvedParams.id] });
       queryClient.invalidateQueries({ queryKey: ['templates'] });
       router.push('/templates');
+    },
+    onError: (error: Error) => {
+      toast.error('Update Failed', {
+        description: error.message || 'Failed to update template. Please try again.',
+      });
     },
   });
 

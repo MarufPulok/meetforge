@@ -34,6 +34,7 @@ import { Filter, Plus, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 import * as z from 'zod';
 
 const leadSchema = z.object({
@@ -70,7 +71,10 @@ export default function LeadsPage() {
         ? '/api/leads' 
         : `/api/leads?status=${statusFilter}`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error('Failed to fetch leads');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to fetch leads');
+      }
       return res.json();
     },
   });
@@ -82,13 +86,24 @@ export default function LeadsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error('Failed to create lead');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to create lead');
+      }
       return res.json();
     },
     onSuccess: () => {
+      toast.success('Lead Created', {
+        description: 'The lead has been added successfully.',
+      });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       setIsAddDialogOpen(false);
       reset();
+    },
+    onError: (error: Error) => {
+      toast.error('Creation Failed', {
+        description: error.message || 'Failed to create lead. Please try again.',
+      });
     },
   });
 
@@ -100,13 +115,25 @@ export default function LeadsPage() {
         method: 'POST',
         body: formData,
       });
-      if (!res.ok) throw new Error('Failed to import leads');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to import leads');
+      }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      const count = data.count || data.imported || 0;
+      toast.success('Import Successful', {
+        description: `Successfully imported ${count} lead(s) from CSV file.`,
+      });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       setIsImportDialogOpen(false);
       setImportFile(null);
+    },
+    onError: (error: Error) => {
+      toast.error('Import Failed', {
+        description: error.message || 'Failed to import leads. Please check your CSV file format.',
+      });
     },
   });
 

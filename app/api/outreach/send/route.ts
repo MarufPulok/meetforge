@@ -56,18 +56,36 @@ export async function POST(request: NextRequest) {
     // Send emails to each lead
     for (const lead of leads) {
       try {
+        // Apply template variables (with safety checks)
+        const personalizedSubject = (template.subject || '')
+          .replace(/\{\{firstName\}\}/g, lead.firstName || '')
+          .replace(/\{\{lastName\}\}/g, lead.lastName || '')
+          .replace(/\{\{companyName\}\}/g, lead.companyName || '')
+          .replace(/\{\{location\}\}/g, lead.location || '');
+        
+        const personalizedBody = (template.body || '')
+          .replace(/\{\{firstName\}\}/g, lead.firstName || '')
+          .replace(/\{\{lastName\}\}/g, lead.lastName || '')
+          .replace(/\{\{companyName\}\}/g, lead.companyName || '')
+          .replace(/\{\{location\}\}/g, lead.location || '');
+        
+        // Validate template has required fields
+        if (!personalizedSubject || !personalizedBody) {
+          results.failed++;
+          results.errors.push(
+            `${lead.email}: Template is missing subject or body`
+          );
+          continue;
+        }
+        
         const emailResult = await sendOutreachEmail(lead, template, offerConfig);
         
-        // Create outreach message record
+        // Create outreach message record (always with subject/body, even on failure)
         await OutreachMessage.create({
           leadId: lead._id,
           templateId: template._id,
-          subject: emailResult.success 
-            ? template.subject.replace(/\{\{firstName\}\}/g, lead.firstName || '')
-            : '',
-          body: emailResult.success 
-            ? template.body.replace(/\{\{firstName\}\}/g, lead.firstName || '')
-            : '',
+          subject: personalizedSubject,
+          body: personalizedBody,
           sentAt: new Date(),
           status: emailResult.success ? 'SENT' : 'FAILED',
           providerMessageId: emailResult.messageId,

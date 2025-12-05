@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 import * as z from 'zod';
 
 const offerConfigSchema = z.object({
@@ -24,13 +25,15 @@ type OfferConfigFormData = z.infer<typeof offerConfigSchema>;
 
 export default function OfferSettingsPage() {
   const queryClient = useQueryClient();
-  const [successMessage, setSuccessMessage] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['offerConfig'],
     queryFn: async () => {
       const res = await fetch('/api/offer-config');
-      if (!res.ok) throw new Error('Failed to fetch config');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to fetch config');
+      }
       return res.json();
     },
   });
@@ -42,13 +45,22 @@ export default function OfferSettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       });
-      if (!res.ok) throw new Error('Failed to save config');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to save config');
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['offerConfig'] });
-      setSuccessMessage('Settings saved successfully!');
-      setTimeout(() => setSuccessMessage(''), 3000);
+      toast.success('Settings Saved', {
+        description: 'Your offer configuration has been updated successfully.',
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Save Failed', {
+        description: error.message || 'Failed to save settings. Please try again.',
+      });
     },
   });
 
@@ -89,12 +101,6 @@ export default function OfferSettingsPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {successMessage && (
-              <div className="p-3 text-sm text-green-600 bg-green-50 border border-green-200 rounded-md">
-                {successMessage}
-              </div>
-            )}
-
             <div className="space-y-2">
               <Label htmlFor="nicheName">Niche Name</Label>
               <Input

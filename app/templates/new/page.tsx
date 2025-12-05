@@ -11,6 +11,7 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 import * as z from 'zod';
 
 const templateSchema = z.object({
@@ -32,12 +33,23 @@ export default function NewTemplatePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error('Failed to create template');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to create template');
+      }
       return res.json();
     },
     onSuccess: () => {
+      toast.success('Template Created', {
+        description: 'Your email template has been created successfully.',
+      });
       queryClient.invalidateQueries({ queryKey: ['templates'] });
       router.push('/templates');
+    },
+    onError: (error: Error) => {
+      toast.error('Creation Failed', {
+        description: error.message || 'Failed to create template. Please try again.',
+      });
     },
   });
 
