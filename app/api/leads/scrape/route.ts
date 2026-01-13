@@ -4,7 +4,8 @@ import { ApifyClient } from 'apify-client';
 import { NextRequest, NextResponse } from 'next/server';
 
 const APIFY_TOKEN = process.env.APIFY_TOKEN;
-const LEAD_SCRAPER_ACTOR_ID = 'pipelinelabs/lead-scraper-apollo-zoominfo-lusha';
+// Using Google Maps Email Extractor - extracts emails from business websites (~$10/1K results)
+const GOOGLE_MAPS_EMAIL_ACTOR_ID = 'lukaskrivka/google-maps-with-contact-details';
 
 interface ScrapeRequest {
   // Filter options
@@ -122,60 +123,75 @@ export async function POST(request: NextRequest) {
       try {
         const client = new ApifyClient({ token: APIFY_TOKEN });
         
-        // Build Apify actor input based on user filters
-        const actorInput: Record<string, any> = {
-          maxResults: body.limit || 25,
+        // Build Google Maps Email Extractor input
+        // Combine industries/keywords into search query
+        const searchTerms = [
+          ...(body.keywords || []),
+          ...(body.industries || []),
+        ].filter(Boolean);
+        
+        const searchQuery = searchTerms.length > 0 ? searchTerms : ['business'];
+        const location = body.locations?.[0] || 'New York, USA';
+        
+        const actorInput = {
+          searchStringsArray: searchQuery,
+          locationQuery: location,
+          maxCrawledPlacesPerSearch: body.limit || 25,
+          language: 'en',
+          skipClosedPlaces: true,
         };
         
-        // Map our filters to Apify input format
-        if (body.jobTitles?.length) {
-          actorInput.personTitles = body.jobTitles;
-        }
-        if (body.locations?.length) {
-          actorInput.personLocations = body.locations;
-        }
-        if (body.industries?.length) {
-          actorInput.organizationIndustries = body.industries;
-        }
-        if (body.keywords?.length) {
-          actorInput.qKeywords = body.keywords.join(' ');
-        }
-        
-        console.log('Starting Apify actor with input:', actorInput);
+        console.log('Starting Google Maps Email Extractor with input:', actorInput);
         
         // Run the actor and wait for it to finish
-        const run = await client.actor(LEAD_SCRAPER_ACTOR_ID).call(actorInput, {
-          waitSecs: 120, // Wait up to 2 minutes
+        const run = await client.actor(GOOGLE_MAPS_EMAIL_ACTOR_ID).call(actorInput, {
+          waitSecs: 300, // Wait up to 5 minutes (email extraction takes longer)
         });
         
         // Get results from the dataset
         const { items } = await client.dataset(run.defaultDatasetId).listItems();
         
         if (items && items.length > 0) {
-          const leads = items.map((lead: any) => ({
-            firstName: lead.first_name || lead.name?.split(' ')[0] || '',
-            lastName: lead.last_name || lead.name?.split(' ').slice(1).join(' ') || '',
-            email: lead.email || '',
-            phone: lead.phone_numbers?.[0] || lead.phone || '',
-            companyName: lead.organization?.name || lead.company || '',
-            location: [lead.city, lead.state, lead.country].filter(Boolean).join(', '),
-            notes: lead.title ? `Job Title: ${lead.title}` : '',
-            linkedinUrl: lead.linkedin_url || '',
+          // Transform results with emails to lead format
+          const leads = items.map((place: any) => ({
+            firstName: '', // Google Maps doesn't have personal names
+            lastName: '',
+            email: place.emails?.[0] || '', // Primary email from the actor
+            allEmails: place.emails || [],
+            phone: place.phone || place.phoneUnformatted || '',
+            companyName: place.title || '',
+            location: place.address || '',
+            website: place.website || '',
+            notes: `Rating: ${place.totalScore || 'N/A'} (${place.reviewsCount || 0} reviews)`,
+            rating: place.totalScore,
+            ratingCount: place.reviewsCount,
+            placeId: place.placeId,
+            socialMedia: {
+              facebook: place.facebooks?.[0]?.startUrl || place.facebooks?.[0] || '',
+              instagram: place.instagrams?.[0]?.startUrl || place.instagrams?.[0] || '',
+              twitter: place.twitters?.[0]?.startUrl || place.twitters?.[0] || '',
+              linkedIn: place.linkedIns?.[0] || '',
+            },
           }));
+          
+          const leadsWithEmails = leads.filter((l: any) => l.email);
           
           return NextResponse.json({
             success: true,
             count: leads.length,
+            leadsWithEmails: leadsWithEmails.length,
             leads,
-            source: 'apify',
+            source: 'google-maps-email',
+            message: `Found ${leadsWithEmails.length} leads with emails out of ${leads.length} total.`,
           });
         }
         
-        console.log('Apify returned no results, falling back to mock');
+        console.log('Google Maps Email Extractor returned no results, falling back to mock');
       } catch (apiError) {
         console.error('Apify API error, falling back to mock:', apiError);
       }
     }
+
 
     // Generate mock leads based on search criteria
     const mockLeads = generateMockLeads(body);
